@@ -82,7 +82,6 @@ end
 # init grid
 @grid = make_grid
 
-
 def init_block
   # init 2x2 'block' starting state
   @grid[1][1] = ALIVE
@@ -111,18 +110,7 @@ def init_random
       @grid[y][x] = rand(2) == 1 ? ALIVE : DEAD
     end
   end
-end
-
-if ARGV.include? "glider"
-  init_glider
-elsif ARGV.include? "block"
-  init_block
-elsif ARGV.include? "blinker"
-  init_blinker
-else
-  init_random
-end
-    
+end 
 
 def visit_neighbors(cell_x, cell_y)
   start_x = (cell_x - 1).clamp(0, @max_x - 1)
@@ -162,12 +150,22 @@ def update_grid
           cell_state = ALIVE
         end
       end
-      next_grid[y][x] = cell_state
 
-      
+      next_grid[y][x] = cell_state
     end
   end
   @grid = next_grid
+end
+
+# set up initial state of the world
+if ARGV.include? "glider"
+  init_glider
+elsif ARGV.include? "block"
+  init_block
+elsif ARGV.include? "blinker"
+  init_blinker
+else
+  init_random
 end
 
 tick = 0
