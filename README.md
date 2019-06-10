@@ -3,5 +3,5 @@ ruby curses demos
 
 ```bash
 bundle install
-ruby random.rb
+bundle exec ruby random.rb
 ```
