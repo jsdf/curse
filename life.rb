@@ -2,16 +2,8 @@
 
 require "curses"
 
-DEBUG = false
-
-def debuglog(msg)
-  if DEBUG
-    puts msg
-  end
-end
-
 def onsig(signal)
-  # Curses.close_screen
+  Curses.close_screen
   exit signal
 end
 
@@ -21,36 +13,31 @@ end
   end
 end
 
-unless DEBUG
-  # curses setup stuff
-  Curses.init_screen
-  Curses.nl
-  Curses.noecho
-  Curses.curs_set 0
-  Curses.start_color # enable color output
-end
+# curses setup stuff
+Curses.init_screen
+Curses.nl
+Curses.noecho
+Curses.curs_set 0
+Curses.start_color # enable color output
 
 srand # seed random number generator
 
+
+# colors
 GRASS_PAIR = 1
 WATER_PAIR = 2
 MOUNTAIN_PAIR = 3
 FIRE_PAIR = 4
-
-unless DEBUG
-  Curses.init_pair(GRASS_PAIR, Curses::COLOR_YELLOW, Curses::COLOR_GREEN)
-  Curses.init_pair(WATER_PAIR, Curses::COLOR_CYAN, Curses::COLOR_BLUE)
-  Curses.init_pair(MOUNTAIN_PAIR, Curses::COLOR_BLACK, Curses::COLOR_WHITE)
-  Curses.init_pair(FIRE_PAIR, Curses::COLOR_RED, Curses::COLOR_MAGENTA)
-end
+Curses.init_pair(GRASS_PAIR, Curses::COLOR_YELLOW, Curses::COLOR_GREEN)
+Curses.init_pair(WATER_PAIR, Curses::COLOR_CYAN, Curses::COLOR_BLUE)
+Curses.init_pair(MOUNTAIN_PAIR, Curses::COLOR_BLACK, Curses::COLOR_WHITE)
+Curses.init_pair(FIRE_PAIR, Curses::COLOR_RED, Curses::COLOR_MAGENTA)
 
 def place_string(x, y, color, string)
-  unless DEBUG
-    Curses.attrset(Curses.color_pair(color))
+  Curses.attrset(Curses.color_pair(color))
 
-    Curses.setpos(y, x)
-    Curses.addstr(string)
-  end
+  Curses.setpos(y, x)
+  Curses.addstr(string)
 end
 
 # Game of Life
@@ -58,14 +45,14 @@ end
 DEAD = 0
 ALIVE = 1
 
-SIZE = 10
+DEFAULT_SIZE = 10
 
 if ARGV.include? "small"
-  @max_x = SIZE * 2
-  @max_y = SIZE
+  @max_x = DEFAULT_SIZE * 2
+  @max_y = DEFAULT_SIZE
 else
-  @max_x = Curses.cols == 0 ? SIZE * 2 : Curses.cols
-  @max_y = Curses.lines == 0 ? SIZE : Curses.lines
+  @max_x = Curses.cols == 0 ? DEFAULT_SIZE * 2 : Curses.cols
+  @max_y = Curses.lines == 0 ? DEFAULT_SIZE : Curses.lines
 end
 
 
@@ -143,13 +130,9 @@ def visit_neighbors(cell_x, cell_y)
   end_x = (cell_x + 1).clamp(0, @max_x - 1)
   end_y = (cell_y + 1).clamp(0, @max_y - 1)
 
-  debuglog "visit_neighbors #{cell_x} #{cell_y}, start_x=#{start_x} start_y=#{start_y} end_x=#{end_x} end_y=#{end_y}"
-
   (start_y..end_y).each do |y|
     (start_x..end_x).each do |x|
-      debuglog "neighbor #{x} #{y}"
       unless x == cell_x && y == cell_y
-        debuglog "visit #{@grid[y][x]}"
         yield @grid[y][x]
       end
     end
@@ -181,7 +164,7 @@ def update_grid
       end
       next_grid[y][x] = cell_state
 
-      debuglog "#{x}, #{y} alive_neighbors=#{alive_neighbors} from=#{start_state} to=#{cell_state}"
+      
     end
   end
   @grid = next_grid
@@ -193,7 +176,6 @@ loop do
 
   # update world
   update_grid
-  exit if DEBUG
 
   # render screen
   @y_range.each do |y|
@@ -208,6 +190,6 @@ loop do
   # tick indicator
   place_string(@max_x-1, @max_y-1, MOUNTAIN_PAIR, (tick % 10).to_s)
 
-  Curses.refresh unless DEBUG
+  Curses.refresh
   sleep(0.1)
 end
