@@ -38,7 +38,7 @@ Curses.init_pair(WATER_PAIR, Curses::COLOR_CYAN, Curses::COLOR_BLUE)
 Curses.init_pair(MOUNTAIN_PAIR, Curses::COLOR_BLACK, Curses::COLOR_WHITE)
 Curses.init_pair(FIRE_PAIR, Curses::COLOR_RED, Curses::COLOR_MAGENTA)
 
-def place_string(x, y, color, string)
+def place_string(y, x, color, string)
   Curses.attrset(Curses.color_pair(color))
 
   Curses.setpos(y, x)
@@ -80,7 +80,7 @@ class Grid
     end
   end
 
-  def visit_neighbors(cell_x, cell_y)
+  def visit_neighbors(cell_y, cell_x)
     start_x = (cell_x - 1).clamp(0, @width - 1)
     start_y = (cell_y - 1).clamp(0, @height - 1)
     end_x = (cell_x + 1).clamp(0, @width - 1)
@@ -112,14 +112,14 @@ class Grid
   def traverse_cells
     @y_range.each do |y|
       @x_range.each do |x|
-        yield x, y, @grid[y][x]
+        yield y, x, @grid[y][x]
       end
     end
   end
 
-  def neighbours_alive(cell_x, cell_y)
+  def neighbours_alive(cell_y, cell_x)
     alive_neighbors = 0
-    visit_neighbors(cell_x, cell_y) do |neighbor|
+    visit_neighbors(cell_y, cell_x) do |neighbor|
       alive_neighbors += neighbor
     end
     alive_neighbors
@@ -143,24 +143,20 @@ class Grid
   def tick
     next_grid = make_copy
 
-    @y_range.each do |y|
-      @x_range.each do |x|
-        alive_neighbors = neighbours_alive(x, y)
+    traverse_cells do |y, x, cell_state|
+      alive_neighbors = neighbours_alive(y, x)
 
-        cell_state = @grid[y][x]
-        start_state = cell_state
-        if cell_state == ALIVE
-          if alive_neighbors > 3 || alive_neighbors < 2
-            cell_state = DEAD
-          end
-        else
-          if alive_neighbors == 3
-            cell_state = ALIVE
-          end
+      if cell_state == ALIVE
+        if alive_neighbors > 3 || alive_neighbors < 2
+          cell_state = DEAD
         end
-
-        next_grid.write(y, x, cell_state)
+      else
+        if alive_neighbors == 3
+          cell_state = ALIVE
+        end
       end
+
+      next_grid.write(y, x, cell_state)
     end
     next_grid
   end
@@ -216,14 +212,14 @@ loop do
   $current_grid = $current_grid.tick
 
   # render screen
-  $current_grid.traverse_cells do |x, y, cell_state|
+  $current_grid.traverse_cells do |y, x, cell_state|
     color = cell_state == DEAD ? MOUNTAIN_PAIR : GRASS_PAIR
     pic = cell_state == DEAD ? "." : "O"
-    place_string(x, y, color, pic)
+    place_string(y, x, color, pic)
   end
 
   # tick_count indicator
-  place_string($current_grid.width-1, $current_grid.height-1, MOUNTAIN_PAIR, (tick_count % 10).to_s)
+  place_string($current_grid.height-1, $current_grid.width-1, MOUNTAIN_PAIR, (tick_count % 10).to_s)
 
   Curses.refresh
   sleep(0.1)
