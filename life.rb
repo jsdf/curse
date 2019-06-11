@@ -69,19 +69,13 @@ class Grid
 
     @x_range = 0...@width
     @y_range = 0...@height
+
+    # init grid structure
     @grid = []
     @y_range.each do |y|
       @x_range.each do |x|
         @grid[y] = @grid[y] || []
         @grid[y][x] = DEAD
-      end
-    end
-  end
-
-  def copy_grid(from)
-    @y_range.each do |y|
-      @x_range.each do |x|
-        @grid[y][x] = from[y][x]
       end
     end
   end
@@ -101,7 +95,21 @@ class Grid
     end
   end
 
-  def traverse
+  def update_cells
+    @y_range.each do |y|
+      @x_range.each do |x|
+        @grid[y][x] = yield y, x, @grid[y][x]
+      end
+    end
+  end
+
+  def copy_grid(from)
+    update_cells do |y, x, value|
+      from.read(y, x)
+    end
+  end
+
+  def traverse_cells
     @y_range.each do |y|
       @x_range.each do |x|
         yield x, y, @grid[y][x]
@@ -119,12 +127,16 @@ class Grid
 
   def make_copy
     next_grid = Grid.new(width, height)
-    next_grid.copy_grid(@grid)
+    next_grid.copy_grid(self)
     next_grid
   end
 
   def write(y, x, value)
     @grid[y][x] = value
+  end
+
+  def read(y, x)
+    @grid[y][x]
   end
 
   # rules from https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life#Rules
@@ -154,10 +166,8 @@ class Grid
   end
 
   def init_random
-    @y_range.each do |y|
-      @x_range.each do |x|
-        @grid[y][x] = rand(2) == 1 ? ALIVE : DEAD
-      end
+    update_cells do |y, x, value|
+      rand(2) == 1 ? ALIVE : DEAD
     end
   end
 
@@ -206,7 +216,7 @@ loop do
   $current_grid = $current_grid.tick
 
   # render screen
-  $current_grid.traverse do |x, y, cell_state|
+  $current_grid.traverse_cells do |x, y, cell_state|
     color = cell_state == DEAD ? MOUNTAIN_PAIR : GRASS_PAIR
     pic = cell_state == DEAD ? "." : "O"
     place_string(x, y, color, pic)
