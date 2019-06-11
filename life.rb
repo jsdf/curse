@@ -62,6 +62,7 @@ end
 
 class Grid
   attr_reader :width, :height
+
   def initialize(max_x, max_y)
     @width = max_x
     @height = max_y
@@ -76,7 +77,6 @@ class Grid
       end
     end
   end
-
 
   def copy_grid(from)
     @y_range.each do |y|
