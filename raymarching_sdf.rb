@@ -50,6 +50,8 @@ else
 end
 
 # Raymarch SDF
+# based on the GLSL shader code from
+# http://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/
 
 $MAX_MARCHING_STEPS = 255
 $MIN_DIST = 0.0
