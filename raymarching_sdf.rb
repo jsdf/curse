@@ -188,7 +188,7 @@ end
 #
 # Using the gradient of the SDF, estimate the normal on the surface at point p.
 # 
-def estimateNormal(
+def estimate_normal(
   p # vec3
 )
   Vec3.new(
@@ -210,8 +210,8 @@ end
 # alpha: Shininess coefficient
 # p: position of point being lit
 # eye: the position of the camera
-# lightPos: the position of the light
-# lightIntensity: color/intensity of the light
+# light_pos: the position of the light
+# light_intensity: color/intensity of the light
 #
 # See https://en.wikipedia.org/wiki/Phong_reflection_model#Description
 #
@@ -221,28 +221,28 @@ def phong_contrib_for_light(
  alpha, # float
  p, # vec3
  eye, # vec3
- lightPos, # vec3
- lightIntensity # vec3
+ light_pos, # vec3
+ light_intensity # vec3
 )
-  n = estimateNormal(p) # vec3
-  l = lightPos.sub(p).normalize # vec3
+  n = estimate_normal(p) # vec3
+  l = light_pos.sub(p).normalize # vec3
   v = eye.sub(p).normalize # vec3
   r = Vec3.reflect(l.mul_scalar(-1.0), n).normalize # vec3
   
-  dotLN = Vec3.dot(l, n) # float
-  dotRV = Vec3.dot(r, v) # float
+  dot_l_n = Vec3.dot(l, n) # float
+  dot_r_v = Vec3.dot(r, v) # float
   
-  if dotLN < 0.0
+  if dot_l_n < 0.0
     # Light not visible from this point on the surface
     return Vec3.new(0.0, 0.0, 0.0);
   end
   
-  if dotRV < 0.0
+  if dot_r_v < 0.0
     # Light reflection in opposite direction as viewer, apply only diffuse
     # component
-    return lightIntensity.mul(k_d.mul_scalar(dotLN))
+    return light_intensity.mul(k_d.mul_scalar(dot_l_n))
   end
-  return lightIntensity.mul((k_d.mul_scalar(dotLN).add(k_s.mul_scalar(dotRV ** alpha))))
+  return light_intensity.mul((k_d.mul_scalar(dot_l_n).add(k_s.mul_scalar(dot_r_v ** alpha))))
 end
 
 
@@ -269,30 +269,30 @@ def phong_illumination(
   eye, # vec3
   iTime # float
 )
-  ambientLight = Vec3.new(1.0, 1.0, 1.0).mul_scalar(0.5) # vec3 
-  color = ambientLight.mul(k_a) # vec3 
+  ambient_light = Vec3.new(1.0, 1.0, 1.0).mul_scalar(0.5) # vec3 
+  color = ambient_light.mul(k_a) # vec3 
   
-  light1Pos = Vec3.new(4.0 * Math.sin(iTime), # vec3 
+  light1_pos = Vec3.new(4.0 * Math.sin(iTime), # vec3 
                         2.0,
                         4.0 * Math.cos(iTime))
-  light1Intensity = Vec3.new(0.4, 0.4, 0.4) # vec3 
+  light1_intensity = Vec3.new(0.4, 0.4, 0.4) # vec3 
   
   color = color.add(phong_contrib_for_light(k_d, k_s, alpha, p, eye,
-                                  light1Pos,
-                                  light1Intensity))
+                                  light1_pos,
+                                  light1_intensity))
   
-  light2Pos = Vec3.new(2.0 * Math.sin(0.37 * iTime), # vec3 
+  light2_pos = Vec3.new(2.0 * Math.sin(0.37 * iTime), # vec3 
                         2.0 * Math.cos(0.37 * iTime),
                         2.0)
-  light2Intensity = Vec3.new(0.4, 0.4, 0.4) # vec3 
+  light2_intensity = Vec3.new(0.4, 0.4, 0.4) # vec3 
   
   color = color.add(phong_contrib_for_light(k_d, k_s, alpha, p, eye,
-                                  light2Pos,
-                                  light2Intensity))
+                                  light2_pos,
+                                  light2_intensity))
   color
 end
 
-
+# these are two chars wide to account for console 'pixels' being tall
 LIGHT_INTENSITY = [
   "  ", " .",
   "..", ".;",
@@ -312,7 +312,7 @@ def main_image(
     
   if dist > $MAX_DIST - $EPSILON
     # Didn't hit anything
-    return :black
+    return :transparent
   end
   
   # The closest point on the surface to the eyepoint along the view ray
@@ -347,8 +347,8 @@ loop do
   y_range.each do |y|
     x_range.each do |x|
       pixel = main_image(screen, Vec2.new(x, y), tick_count)
-      color = pixel == :black ?  MOUNTAIN_PAIR : GRASS_PAIR
-      pic = pixel == :black ? TRANSPARENT : pixel
+      color = pixel == :transparent ?  MOUNTAIN_PAIR : GRASS_PAIR
+      pic = pixel == :transparent ? TRANSPARENT : pixel
       # puts "color #{color}"
       place_string(y, x * $SCALE_X, color, pic)
     end
