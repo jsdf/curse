@@ -7,6 +7,13 @@ ruby curses demos
 bundle install
 ```
 
+## raymarching signed distance field renderer
+```bash
+bundle exec ruby raymarching_sdf.rb
+# options
+bundle exec ruby raymarching_sdf.rb small # render small view
+```
+
 ## conway's game of life
 
 ```bash
