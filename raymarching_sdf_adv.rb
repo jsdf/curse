@@ -62,13 +62,26 @@ if ARGV.include? "box"
   $demo = :box
 end
 
-$moving_lights = true
+$demo_rotate = false
+if ARGV.include? "rotate"
+  $demo_rotate = true
+end
+
+$angled_view = $demo == :box
+if ARGV.include? "side"
+  $angled_view = false
+end
+
+$moving_lights = !($demo_rotate && $demo == :box)
 
 def log(msg)
-  # puts msg
-  open('sdf.out', 'a') do |f|
-    f.puts msg
-  end
+  # if $HEADLESS
+  #   puts msg
+  # else
+    open('sdf.out', 'a') do |f|
+      f.puts msg
+    end
+  # end
 end
 
 $global_memoize = {}
@@ -145,6 +158,14 @@ class Vec3
     a.x*b.x + a.y*b.y + a.z*b.z
   end
 
+  def self.cross(a, b)
+    Vec3.new(
+      a.y * b.z - a.z * b.y,
+      a.z * b.x - a.x * b.z,
+      a.x * b.y - a.y * b.x
+    )
+  end
+
   def self.reflect(incident, normal)
     incident.sub(normal.mul_scalar(2.0 * self.dot(normal, incident)))
   end
@@ -170,6 +191,88 @@ def sphere_sdf(p)
   p.length - 1.0
 end
 
+
+class Vec4
+  attr_accessor :x,:y,:z,:w
+  def initialize(x, y, z, w)
+    @x = x
+    @y = y
+    @z = z
+    @w = w
+  end
+
+  def xyz
+    Vec3.new(x,y,z)
+  end
+end
+
+# def rotate_y(
+#   theta # float
+# ) # mat4
+#   c = cos(theta) # float
+#   s = sin(theta) # float
+
+#   return mat4(
+#     vec4(c, 0, s, 0),
+#     vec4(0, 1, 0, 0),
+#     vec4(-s, 0, c, 0),
+#     vec4(0, 0, 0, 1)
+#   )
+# end
+
+class Mat3
+  def initialize(col0, col1, col2)
+    @m = [col0, col1, col2]
+  end
+
+  # https://stackoverflow.com/a/24594497
+  def mul_vec3_right(v)
+    Vec3.new(
+      @m[0].x * v.x + @m[1].x * v.y + @m[2].x * v.z,
+      @m[0].y * v.x + @m[1].y * v.y + @m[2].y * v.z,
+      @m[0].z * v.x + @m[1].z * v.y + @m[2].z * v.z,
+    )
+  end
+end
+
+class Mat4
+  def initialize(col0, col1, col2, col3)
+    @m = [col0, col1, col2, col3]
+  end
+
+  # https://stackoverflow.com/a/24594497
+  def mul_vec4_right(v)
+    Vec4.new(
+      @m[0].x * v.x + @m[1].x * v.y + @m[2].x * v.z + @m[3].x * v.w,
+      @m[0].y * v.x + @m[1].y * v.y + @m[2].y * v.z + @m[3].y * v.w,
+      @m[0].z * v.x + @m[1].z * v.y + @m[2].z * v.z + @m[3].z * v.w,
+      @m[0].w * v.x + @m[1].w * v.y + @m[2].w * v.z + @m[3].w * v.w,
+    )
+  end
+end
+
+$rotation_memo = {}
+#
+# Rotation matrix around the Y axis.
+#
+def rotate_y(
+  theta # float
+) # mat3
+  deg = degrees(theta).floor % 360
+  if $rotation_memo[deg]
+    return $rotation_memo[deg]
+  end
+  c = Math.cos(theta) # float
+  s = Math.sin(theta) # float
+  matrix = Mat3.new(
+    Vec3.new(c, 0, s),
+    Vec3.new(0, 1, 0),
+    Vec3.new(-s, 0, c)
+  );
+  $rotation_memo[deg] = matrix
+  matrix
+end
+
 #
 # Signed distance function describing the scene.
 # 
@@ -177,7 +280,11 @@ end
 # Sign indicates whether the point is inside or outside the surface,
 # negative indicating inside.
 def scene_sdf(sample_point)
-  zoom = 0.5
+  zoom = $angled_view ? 1.0 : 0.5
+
+  if $demo_rotate
+    sample_point = rotate_y($fixed_tick_count / 30.0).mul_vec3_right(sample_point)
+  end
 
   if $demo == :box
     box_sdf(sample_point, Vec3.new(zoom,zoom,zoom))
@@ -220,6 +327,11 @@ end
 def radians(angle)
   angle/180 * Math::PI
 end
+
+def degrees(radians)
+  radians * 180/Math::PI
+end
+
 
 
 #
@@ -301,6 +413,7 @@ def phong_contrib_for_light(
 end
 
 
+
 # 
 # Lighting via Phong illumination.
 # 
@@ -347,6 +460,32 @@ def phong_illumination(
 end
 
 
+
+#
+# Return a transform matrix that will transform a ray from view space
+# to world coordinates, given the eye point, the camera target, and an up vector.
+#
+# This assumes that the center of the camera is aligned with the negative z axis in
+# view space when calculating the ray marching direction. See rayDirection.
+# 
+def view_matrix(
+  eye, # vec3 
+  center, # vec3 
+  up # vec3 
+) # mat4
+  # Based on gluLookAt man page
+  f = center.sub(eye).normalize # vec3
+  s = Vec3.cross(f, up).normalize # vec3
+  u = Vec3.cross(s, f) # vec3
+  neg_f = f.mul_scalar(-1.0)
+  Mat4.new(
+    Vec4.new(s.x, s.y, s.z, 0.0),
+    Vec4.new(u.x, u.y, u.z, 0.0),
+    Vec4.new(neg_f.x, neg_f.y, neg_f.z, 0.0),
+    Vec4.new(0.0, 0.0, 0.0, 1.0)
+  );
+end
+
 # these are two chars wide to account for console 'pixels' being tall
 LIGHT_RAMP_CHARS = [
   "  ", " .",
@@ -356,7 +495,7 @@ LIGHT_RAMP_CHARS = [
   "**", "00"
 ]
 
-$eye = Vec3.new(0.0, 0.0, 5.0)
+$eye = $angled_view ? Vec3.new(8.0, 5.0, 7.0) : Vec3.new(0.0, 0.0, 5.0)
 
 def main_image(
   screen_bounds, #vec2
@@ -364,7 +503,15 @@ def main_image(
   tick_count
 )
   world_dir = memoize("world_dir:#{frag_coord.x},#{frag_coord.y}") do
-    ray_direction(45.0, screen_bounds, frag_coord) # vec3
+    if $angled_view
+      view_dir = ray_direction(45.0, screen_bounds, frag_coord) # vec3
+        
+      view_to_world = view_matrix($eye, Vec3.new(0.0, 0.0, 0.0), Vec3.new(0.0, 1.0, 0.0)) # mat4
+
+      (view_to_world.mul_vec4_right(Vec4.new(view_dir.x, view_dir.y, view_dir.z, 0.0))).xyz # vec3
+    else
+      ray_direction(45.0, screen_bounds, frag_coord) # vec3
+    end
   end
     
   dist = shortest_distance_to_surface($eye, world_dir, $MIN_DIST, $MAX_DIST) # float
@@ -428,8 +575,10 @@ loop do
   # tick_count indicator
   place_string(screen.y-3, screen.x*$SCALE_X-2, MOUNTAIN_PAIR, ($tick_count % 60).to_s)
   place_string(screen.y-2, screen.x*$SCALE_X-2, MOUNTAIN_PAIR, ($fixed_tick_count % 60).to_s)
-  #fps
+  # fps
   place_string(screen.y-1, screen.x*$SCALE_X-6, MOUNTAIN_PAIR, "fps=#{$frame_timer_count_last}")
+
+  # place_string(screen.y-1, 0, MOUNTAIN_PAIR, "$rotation_memo=#{$rotation_memo.size}, #{$rotation_memo.to_a.last(4).to_h.keys}")
 
   Curses.refresh unless $HEADLESS
 
