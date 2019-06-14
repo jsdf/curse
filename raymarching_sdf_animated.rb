@@ -57,14 +57,17 @@ else
   $max_y = Curses.lines == 0 ? DEFAULT_SIZE : Curses.lines
 end
 
-$demo = :sphere
-if ARGV.include? "box"
-  $demo = :box
+$demo = :box
+if ARGV.include? "sphere"
+  $demo = :sphere
+end
+if ARGV.include? "torus"
+  $demo = :torus
 end
 
-$demo_rotate = false
-if ARGV.include? "rotate"
-  $demo_rotate = true
+$demo_rotate = true
+if ARGV.include? "norotate"
+  $demo_rotate = false
 end
 
 $angled_view = $demo == :box
@@ -110,6 +113,10 @@ class Vec2
   def initialize(x, y)
     @x = x
     @y = y
+  end
+
+  def length
+    Math.sqrt(@x * @x + @y * @y)
   end
 
   def sub(v)
@@ -182,8 +189,15 @@ end
 
 def box_sdf(p, b)
   d = p.abs.sub(b) # vec3
-  # length(max(d,0.0)) + min(max(d.x,max(d.y,d.z)),0.0); 
   d.max_scalar(0.0).length + [[d.x, [d.y, d.z].max].max, 0.0].min
+end
+
+def torus_sdf(
+  p, # vec3
+  t  #vec2
+)
+  q = Vec2.new(Vec2.new(p.x, p.z).length - t.x, p.y)
+  q.length - t.y;
 end
 
 # Signed distance function for a sphere centered at the origin with radius 1.0
@@ -259,8 +273,8 @@ def rotate_y(
   theta # float
 ) # mat3
   deg = degrees(theta).floor % 360
-  if $rotation_memo[deg]
-    return $rotation_memo[deg]
+  if $rotation_memo["y#{deg}"]
+    return $rotation_memo["y#{deg}"]
   end
   c = Math.cos(theta) # float
   s = Math.sin(theta) # float
@@ -269,7 +283,49 @@ def rotate_y(
     Vec3.new(0, 1, 0),
     Vec3.new(-s, 0, c)
   );
-  $rotation_memo[deg] = matrix
+  $rotation_memo["y#{deg}"] = matrix
+  matrix
+end
+
+#
+# Rotation matrix around the x axis.
+#
+def rotate_x(
+  theta # float
+) # mat3
+  deg = degrees(theta).floor % 360
+  if $rotation_memo["x#{deg}"]
+    return $rotation_memo["x#{deg}"]
+  end
+  c = Math.cos(theta) # float
+  s = Math.sin(theta) # float
+  matrix = Mat3.new(
+    Vec3.new(1, 0, 0),
+    Vec3.new(0, c, -s),
+    Vec3.new(0, s, c)
+  );
+  $rotation_memo["x#{deg}"] = matrix
+  matrix
+end
+
+#
+# Rotation matrix around the z axis.
+#
+def rotate_z(
+  theta # float
+) # mat3
+  deg = degrees(theta).floor % 360
+  if $rotation_memo["z#{deg}"]
+    return $rotation_memo["z#{deg}"]
+  end
+  c = Math.cos(theta) # float
+  s = Math.sin(theta) # float
+  matrix = Mat3.new(
+    Vec3.new(c, -s, 0),
+    Vec3.new(s, c, 0),
+    Vec3.new(0, 0, 1)
+  );
+  $rotation_memo["z#{deg}"] = matrix
   matrix
 end
 
@@ -288,6 +344,8 @@ def scene_sdf(sample_point)
 
   if $demo == :box
     box_sdf(sample_point, Vec3.new(zoom,zoom,zoom))
+  elsif $demo = :torus
+    torus_sdf(sample_point, Vec2.new(zoom,zoom))
   else
     sphere_sdf(sample_point)
   end

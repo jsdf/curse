@@ -13,7 +13,8 @@ bundle exec ruby raymarching_sdf.rb
 # options
 bundle exec ruby raymarching_sdf.rb small # render small view
 
-bundle exec ruby raymarching_sdf_adv.rb box rotate # rotating box
+bundle exec ruby raymarching_sdf_animated.rb # rotating box
+bundle exec ruby raymarching_sdf_animated.rb torus # torus
 ```
 
 ## conway's game of life
