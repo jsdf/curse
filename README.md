@@ -1,6 +1,8 @@
 # curse
 ruby curses demos
 
+[video of it in action](https://twitter.com/ur_friend_james/status/1139638414381219841)
+
 ## setup
 
 ```bash
