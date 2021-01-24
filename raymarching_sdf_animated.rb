@@ -434,6 +434,7 @@ end
 # k_s: Specular color
 # alpha: Shininess coefficient
 # p: position of point being lit
+# n: surface normal at point
 # eye: the position of the camera
 # light_pos: the position of the light
 # light_intensity: color/intensity of the light
@@ -445,11 +446,11 @@ def phong_contrib_for_light(
  k_s, # vec3
  alpha, # float
  p, # vec3
+ n, # vec4
  eye, # vec3
  light_pos, # vec3
  light_intensity # vec3
 )
-  n = estimate_normal(p) # vec3
   l = light_pos.sub(p).normalize # vec3
   v = eye.sub(p).normalize # vec3
   r = Vec3.reflect(l.mul_scalar(-1.0), n).normalize # vec3
@@ -481,6 +482,7 @@ end
 # k_s: Specular color
 # alpha: Shininess coefficient
 # p: position of point being lit
+# n: surface normal at point
 # eye: the position of the camera
 # 
 # See https://en.wikipedia.org/wiki/Phong_reflection_model#Description
@@ -491,6 +493,7 @@ def phong_illumination(
   k_s, # vec3
   alpha, # float
   p, # vec3
+  n, # vec3
   eye, # vec3
   iTime # float
 )
@@ -502,7 +505,7 @@ def phong_illumination(
                         4.0 * Math.cos(iTime))
   light1_intensity = Vec3.new(0.4, 0.4, 0.4) # vec3 
   
-  color = color.add(phong_contrib_for_light(k_d, k_s, alpha, p, eye,
+  color = color.add(phong_contrib_for_light(k_d, k_s, alpha, p, n, eye,
                                   light1_pos,
                                   light1_intensity))
   
@@ -511,7 +514,7 @@ def phong_illumination(
                         2.0)
   light2_intensity = Vec3.new(0.4, 0.4, 0.4) # vec3 
   
-  color = color.add(phong_contrib_for_light(k_d, k_s, alpha, p, eye,
+  color = color.add(phong_contrib_for_light(k_d, k_s, alpha, p, n, eye,
                                   light2_pos,
                                   light2_intensity))
   color
@@ -589,7 +592,8 @@ def main_image(
 
   light_tick = $moving_lights ? tick_count / 10.0 : 0
   
-  color = phong_illumination(k_a, k_d, k_s, shininess, p, $eye, light_tick); # vec3
+  n = estimate_normal(p) # vec3
+  color = phong_illumination(k_a, k_d, k_s, shininess, p, n, $eye, light_tick); # vec3
   color = color.mul_scalar(1.5) # boost the brightness a bit
 
   luminance = [color.x+color.y+color.z/3.0, 0.9999].min
